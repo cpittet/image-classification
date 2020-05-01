@@ -1,2 +1,2 @@
-# image-classification
+# Image classification
 Image classification using CNN
