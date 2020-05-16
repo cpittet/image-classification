@@ -1,3 +1,4 @@
 .idea
 src/cnn/data/*
-src/cnn/__py*
+src/cnn/__pycache_*
+src/cnn/parameters.pt
