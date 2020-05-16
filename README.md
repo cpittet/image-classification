@@ -14,7 +14,7 @@ Loss (CrossEntropy) (training : red, validation : blue) :
 ![Alt text](./src/cnn/Loss.svg)
 
 
-It reaches 96.19% of accuracy and a loss of 0.1811 on the validation set. The corresponding parameters of the network are available in the file "parameters.pt".
+It reaches 96.19% of accuracy and a loss of 0.1811 on the validation set.
 
 
 ## Further ideas
