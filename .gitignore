@@ -2,3 +2,5 @@
 src/cnn/data/*
 src/cnn/__pycache_*
 src/cnn/parameters.pt
+src/cnn/categories.json
+src/processing/__pycache_*

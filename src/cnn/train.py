@@ -85,11 +85,10 @@ def validate(model, dataloaders, device, criterion):
         for i, (images, targets) in enumerate(dataloaders['validation']):
             # Load the batch to the device
             images, targets = images.to(device), targets.to(device)
-            batch_size = len(images)
+
             out = model(images)
             tmp = accuracy(out, targets)
             acc += tmp
-
             loss += criterion(out, targets).item()
 
         # Average over the number of batches we used
