@@ -7,21 +7,98 @@ import cv2
 # ================================================================================
 
 
-def get_connected_components(img, keep):
+def connected_components(img):
     """
-    Find the connected components (blobs) in the given img and keep "keep" of them
+    Find the largest connected component (blobs) in the given img and keep "keep" of them
     :param img: the image (in RGB) to detect the blobs in
-    :param keep: the number of blobs to keep, keeping the largest
-    :return: image (in RGB) as an array representing the blob with white background elsewhere
+    :return: image (in RGB) as an array representing the largest blob with white background elsewhere
     """
     height = img.shape[0]
     width = img.shape[1]
     # Transfer the image into Hue Saturation Value
     img_HSV = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
-    labels = np.empty(height * width, dtype=int)
-    labels_equival = np.array(np.array(0))
+    labels = np.zeros(height * width, dtype=int)
+    labels_equival = {0: {0}}  # dict of sets
 
     # First pass : put the labels on each pixel
+    cur_index = 0
+    for j in range(height):
+        for i in range(width):
+            inside = cur_index + i
+            if img_HSV[j, i, 2] >= 250:
+                min_label = 0 if i == 0 else labels[inside - 1]
+
+                if j > 0:
+                    start = 0 if i == 0 else i - 1
+                    end = i+2 if i + 2 <= width else width
+                    for k in range(start, end):
+                        label_in = labels[k+cur_index - width]
+                        if label_in != 0:
+                            if min_label == 0:
+                                min_label = label_in
+                            else:
+                                min_label = min_label if min_label <= label_in else label_in
+
+                if min_label != 0:
+                    if j > 0:
+                        start = 0 if i == 0 else i - 1
+                        end = i + 2 if i + 2 <= width else width
+                        for k in range(start, end):
+                            label_in = labels[k + cur_index - width]
+                            if label_in != 0:
+                                labels_equival.get(label_in).update(labels_equival.get(min_label))
+                                labels_equival.get(min_label).update(labels_equival.get(label_in))
+                    if i > 0 and labels[inside - 1] != 0:
+                        labels_equival.get(labels[inside-1]).update(labels_equival.get(min_label))
+                        labels_equival.get(min_label).update(labels_equival.get(labels[inside-1]))
+
+                    labels[inside] = min_label
+                else:
+                    nb = len(labels_equival)
+                    labels_equival[nb] = {nb}
+                    labels[inside] = nb
+
+        cur_index += width
+
+    # Second pass
+    count_pixels = np.zeros(len(labels_equival), dtype=int)
+    cur_index = 0
+    for j in range(height):
+        for i in range(width):
+            inside = cur_index + i
+            labels[inside] = min(labels_equival.get(labels[inside]))
+            count_pixels[labels[inside]] += 1
+
+        cur_index += width
+
+    max_label = np.argmax(count_pixels)
+
+    result = np.zeros(img.shape, dtype=np.uint8)
+    cur_index = 0
+    for j in range(height):
+        for i in range(width):
+            inside = cur_index + i
+            result[j, i] = img[j, i] if labels[inside] == max_label else np.array([0, 0, 255])
+
+        cur_index += width
+    return result
+
+
+def find_rectangle(blob):
+    """
+    Find the rectangle that fits the only blob in the given image
+    :param blob: the image containing the blob
+    :return: (x1, y1, x2, y2), the 2 opposite corners of the rectangle (upper left and lower right)
+    """
+    y2 = 0
+    i, j, _ = np.where(blob[:, :] != np.array([255, 255, 255]))
+
+    x1 = np.min(i)
+    y1 = np.min(j)
+    x2 = np.max(i)
+    y2 = np.max(j)
+    print('{}, {}, {}, {}'.format(x1, y1, x2, y2))
+    return x1, y1, x2, y2
 
 
 def resize(img, width, height):
@@ -51,3 +128,31 @@ def crop(img, x1, y1, x2, y2):
     """
     return img[y1:y2, x1:x2]
 
+
+def threshold_hsb(img, hue_low, hue_high, sat_low, sat_high, brig_low, brig_high):
+    """
+    Do a HSB threshold on the image with the provided ranges
+    :param img: the image to threshold
+    :param hue_low: lower bound for the hue
+    :param hue_high: higher bound for the hue
+    :param sat_low: lower bound for the saturation
+    :param sat_high: higher bound for the saturation
+    :param brig_low: lower bound for the brightness
+    :param brig_high: higher bound for the brightness
+    :return: the thresholded image
+    """
+    # Convert to HSB color space
+    hsb = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
+
+    lower = np.array([hue_low, sat_low, brig_low])
+    upper = np.array([hue_high, sat_high, brig_high])
+
+    # Do the thresholding
+    mask_low = (hsb[:, :] < lower).any(axis=2)
+    hsb[mask_low] = np.array([0, 0, 255])
+
+    mask_high = (hsb[:, :] > upper).any(axis=2)
+    hsb[mask_high] = np.array([0, 0, 255])
+
+    hsb = cv2.cvtColor(hsb, cv2.COLOR_HSV2RGB)
+    return hsb

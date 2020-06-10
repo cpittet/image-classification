@@ -2,6 +2,8 @@ import torch
 import json
 import os
 
+import numpy as np
+
 from . import net
 
 
@@ -50,7 +52,7 @@ class NetworkUtils:
         """
         out = self.model(image)
         # First axis is for the batch size, see application.py -> function classify in Classify
-        probas = self.softmax(out)[0]
+        probas = self.softmax(out)[0].detach()
         # .item() because it returns a tensor
         idx_prediction = torch.argmax(probas).item()
         proba = probas[idx_prediction].item()
