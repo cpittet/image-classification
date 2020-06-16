@@ -1,4 +1,5 @@
 import argparse
+import json
 
 import torch
 import torch.nn as nn
@@ -28,10 +29,13 @@ parser.add_argument('-lr', '--learningrate', help='The original learning rate to
 parser.add_argument('-s', '--summary', help='Display the summary of the network', action='store_true')
 
 # save dict
-parser.add_argument('-sp', '--save', help='Save the dictionary containing tuned parameters under the specified file')
+parser.add_argument('-sp', '--save', help='Save the dictionary containing tuned parameters in the specified file')
 
 # load dict
 parser.add_argument('-ld', '--load', help='Load the dictionary containing tuned parameters from the specified file')
+
+# save index -> class name mappings
+parser.add_argument('-ma', '--mappings', help='Save the dict of index -> class name mappings in the specified file')
 # =======================================================================================
 
 
@@ -51,19 +55,25 @@ def get_loaders():
     """
     Instantiate the ImageNet dataset and a DataLoader for it,
     for both training and validation
-    :return: dictionary containing : dataloader training, dataloader validation
+    :return: dictionary containing : dataloader training, dataloader validation,
+             dataset of training
     """
     batch_size = 128
-    transform = transforms.ToTensor()
-    dataset_tr = ImageFolder('./data/fruits-360/Training', transform=transform)
+    transform = transforms.Compose(
+        [transforms.CenterCrop(360),
+         transforms.Resize(100),
+         transforms.ToTensor()]
+    )
+    dataset_tr = ImageFolder('./data/modified/Training', transform=transform)
     sampler_tr = RandomSampler(dataset_tr)
     dataloader_tr = DataLoader(dataset_tr, batch_size=batch_size, shuffle=False, num_workers=4,
                                pin_memory=True, sampler=sampler_tr)
-    dataset_val = ImageFolder('./data/fruits-360/Test', transform=transform)
+    dataset_val = ImageFolder('./data/modified/Test', transform=transform)
     sampler_val = RandomSampler(dataset_val)
     dataloader_val = DataLoader(dataset_val, batch_size=batch_size, shuffle=False, num_workers=4,
                                 pin_memory=True, sampler=sampler_val)
-    return {'train': dataloader_tr, 'validation': dataloader_val}
+
+    return {'train': dataloader_tr, 'validation': dataloader_val}, dataset_tr
 
 
 def validate(model, dataloaders, device, criterion):
@@ -166,6 +176,20 @@ def train_model(model, optimizer, lr_scheduler, criterion, epochs, dataloaders, 
         print('Parameters saved.')
 
 
+def save_mappings(dataloaders, file):
+    """
+    Saves the index -> class name mappings in a json file
+    :param dataloaders: dictionary containing the dataloaders for training and validation sets
+    :param file: the file to write the mappings to
+    """
+    # Revert the mappings, to get (index -> class name) mappings
+    mappings = {value: key for key, value in dataloaders['train'].class_to_idx.items()}
+    with open(file, 'w') as f:
+        json.dump(mappings, f)
+
+    print('Wrote index -> class name mappings in : {}'.format(file))
+
+
 def main():
     args = parser.parse_args()
     epochs = args.epochs if args.epochs is not None else 50
@@ -210,7 +234,11 @@ def main():
     lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[4, 7, 8], gamma=0.1)
 
     # Get the different data loader
-    dataloaders = get_loaders()
+    dataloaders, dataset_tr = get_loaders()
+
+    if args.mappings is not None:
+        # Save the mappings
+        save_mappings(dataset_tr, args.mappings)
 
     # Train the model
     train_model(model, optimizer, lr_scheduler, criterion, epochs, dataloaders, device, args.save, writer)

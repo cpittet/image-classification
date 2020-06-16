@@ -56,21 +56,21 @@ class Net(nn.Module):
 
         # Fully connected layer 1 : in 256 * 7 * 7 = 12'544
         # output 4096
-        fc1 = nn.Linear(256*7*7, 4096)
+        fc1 = nn.Linear(256*7*7, 2048)
 
         # Fully connected layer 2 : in 4096
         # output 4096
-        fc2 = nn.Linear(4096, 1024)
+        fc2 = nn.Linear(2048, 516)
 
         # Fully connected layer 3 : in 4096
         # output 120 (categories)
-        fc3 = nn.Linear(1024, 120)
+        fc3 = nn.Linear(516, 120)
 
         self.fc = nn.Sequential(
-            nn.Dropout(p=0.25),
+            nn.Dropout(p=0.4),
             fc1,
             nn.ReLU(inplace=True),
-            nn.Dropout(p=0.25),
+            nn.Dropout(p=0.4),
             fc2,
             nn.ReLU(inplace=True),
             fc3

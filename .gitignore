@@ -4,3 +4,5 @@ src/cnn/__pycache_*
 src/cnn/parameters.pt
 src/cnn/categories.json
 src/processing/__pycache_*
+src/cnn/mappings120.json
+src/cnn/param_smaller_modified120_0.1.pt

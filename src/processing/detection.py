@@ -129,6 +129,30 @@ def crop(img, x1, y1, x2, y2):
     return img[y1:y2, x1:x2]
 
 
+def adaptive_threshold(img):
+    """
+    Separate the source image into 3 channels (HSB). Do an adaptive threshold on each
+    channel and then recompose the image
+    :param img: the image to do the threshold on
+    :return: the thresholded image
+    """
+    hsb = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
+    img_h = hsb[:, :, 0]
+    img_s = hsb[:, :, 1]
+    img_b = hsb[:, :, 2]
+
+    t_h = cv2.adaptiveThreshold(img_h, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                cv2.THRESH_BINARY_INV, 3, 0)
+    t_s = cv2.adaptiveThreshold(img_s, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                cv2.THRESH_BINARY_INV, 3, 0)
+    t_b = cv2.adaptiveThreshold(img_b, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                cv2.THRESH_BINARY, 3, 0)
+
+    result = np.stack((t_h, t_s, t_b), axis=-1)
+    result = cv2.cvtColor(result, cv2.COLOR_HSV2RGB)
+    return result
+
+
 def threshold_hsb(img, hue_low, hue_high, sat_low, sat_high, brig_low, brig_high):
     """
     Do a HSB threshold on the image with the provided ranges
